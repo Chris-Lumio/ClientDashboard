@@ -39,6 +39,9 @@ PORT = 8090
 KUMA_DB_PATH = "/home/yaralumio1/uptime-kuma/data/kuma.db"
 HC_DB_PATH = "/home/yaralumio1/healthchecks/hc.sqlite"
 TEMPLATES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "templates")
+STATIC_FONTS_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "fonts")
+# Self-hosted Inter font (whitelisted, public so the login page can use it)
+STATIC_FONT_FILES = {"inter-latin-wght-normal.woff2", "inter-latin-ext-wght-normal.woff2"}
 
 
 def get_system_metrics():
@@ -558,6 +561,22 @@ class DashboardHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
+
+        # 0. Self-hosted brand font (public, whitelisted filenames only)
+        if path.startswith("/static/fonts/"):
+            filename = path[len("/static/fonts/"):]
+            font_path = os.path.join(STATIC_FONTS_DIR, filename)
+            if filename in STATIC_FONT_FILES and os.path.isfile(font_path):
+                with open(font_path, "rb") as f:
+                    data = f.read()
+                self.send_response(200)
+                self.send_header("Content-Type", "font/woff2")
+                self.send_header("Content-Length", str(len(data)))
+                self.send_header("Cache-Control", "public, max-age=31536000, immutable")
+                self.send_security_headers(is_cacheable=True)
+                self.end_headers()
+                self.wfile.write(data)
+                return
 
         # 1. Unauthenticated Health Check (for Cloudflare / uptime checks)
         if path in ("/health", "/api/health"):
