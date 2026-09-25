@@ -1,0 +1,14 @@
+[Unit]
+Description=Healthchecks Send Alerts Worker
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/yaralumio1/healthchecks
+ExecStart=/home/yaralumio1/healthchecks/hc-venv/bin/python manage.py sendalerts
+Restart=always
+RestartSec=5s
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

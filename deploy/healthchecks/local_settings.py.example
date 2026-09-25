@@ -1,0 +1,43 @@
+# Healthchecks configuration example
+# Copy to hc/local_settings.py and configure your environment
+import os
+
+SITE_ROOT = "https://lumiosolutions-office.tail85d58c.ts.net"
+PING_ENDPOINT = "https://lumiosolutions-office.tail85d58c.ts.net/ping/"
+SITE_NAME = "Healthchecks"
+DEFAULT_FROM_EMAIL = "healthchecks@example.org"
+
+ALLOWED_HOSTS = [
+    "lumiosolutions-office.tail85d58c.ts.net",
+    "127.0.0.1",
+    "localhost",
+    "100.85.142.34",
+    "192.168.0.129",
+]
+
+CSRF_TRUSTED_ORIGINS = [
+    "https://lumiosolutions-office.tail85d58c.ts.net",
+    "http://127.0.0.1:8000",
+    "http://localhost:8000",
+    "http://192.168.0.129:8000",
+]
+
+# Generate a strong unique random secret key for production:
+# python -c 'import secrets; print(secrets.token_urlsafe(50))'
+SECRET_KEY = "CHANGE_ME_TO_A_SECURE_RANDOM_SECRET_KEY"
+
+INTEGRATIONS_ALLOW_PRIVATE_IPS = True
+REGISTRATION_OPEN = False
+DEBUG = False
+COMPRESS_ENABLED = True
+COMPRESS_OFFLINE = True
+
+# Header for reverse proxy HTTPS scheme detection
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+
+# Default Mailer
+MAILERS = {
+    "default": {
+        "BACKEND": "django.core.mail.backends.console.EmailBackend",
+    }
+}

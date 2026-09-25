@@ -1,0 +1,14 @@
+[Unit]
+Description=Lumio Operations Dashboard (Kuma & Healthchecks Fleet Telemetry)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/yaralumio1/lumio-dashboard
+ExecStart=/home/yaralumio1/healthchecks/hc-venv/bin/python /home/yaralumio1/lumio-dashboard/server.py
+Restart=always
+RestartSec=5s
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

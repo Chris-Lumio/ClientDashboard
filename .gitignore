@@ -1,6 +1,27 @@
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+hc-venv/
+ENV/
+
+# Databases & Runtime State
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+data/
+
+# Dashboard & Secrets
 .auth.json
 .auth.json.tmp
 sessions.db*
 *.tmp
+*.log
+.env
+local_settings.py

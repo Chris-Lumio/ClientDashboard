@@ -1,0 +1,14 @@
+[Unit]
+Description=Healthchecks Web Server (Gunicorn)
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/yaralumio1/healthchecks
+ExecStart=/home/yaralumio1/healthchecks/hc-venv/bin/gunicorn --bind 0.0.0.0:8000 --workers 2 hc.wsgi:application --timeout 60
+Restart=always
+RestartSec=5s
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target
