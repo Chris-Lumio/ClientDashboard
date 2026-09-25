@@ -1,0 +1,1283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumio Operations — Fleet & Backup Telemetry</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛡️</text></svg>">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: #111827;
+      --card-hover: #162032;
+      --card-border: #1f293d;
+      --text-main: #f3f4f6;
+      --text-muted: #9ca3af;
+      --text-dim: #6b7280;
+      --lumio-blue: #293896;
+      --lumio-cyan: #20C4F4;
+      --lumio-purple: #7351A1;
+      --accent: #20C4F4;
+      --accent-glow: rgba(32, 196, 244, 0.3);
+      --success: #10b981;
+      --success-bg: rgba(16, 185, 129, 0.12);
+      --success-border: rgba(16, 185, 129, 0.3);
+      --danger: #ef4444;
+      --danger-bg: rgba(239, 68, 68, 0.12);
+      --danger-border: rgba(239, 68, 68, 0.3);
+      --warning: #f59e0b;
+      --warning-bg: rgba(245, 158, 11, 0.12);
+      --info: #20C4F4;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: var(--bg);
+      background-image: 
+        radial-gradient(at 5% 5%, rgba(41, 56, 150, 0.18) 0px, transparent 45%),
+        radial-gradient(at 95% 95%, rgba(115, 81, 161, 0.14) 0px, transparent 45%);
+      color: var(--text-main);
+      min-height: 100vh;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+    }
+
+    /* Header */
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--card-border);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-icon {
+      width: 44px;
+      height: 44px;
+      background: linear-gradient(135deg, #293896, #7351A1);
+      border: 1px solid rgba(32, 196, 244, 0.35);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 24px;
+      box-shadow: 0 0 20px var(--accent-glow);
+    }
+
+    .brand-title h1 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-title p {
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .live-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      background: rgba(16, 185, 129, 0.15);
+      border: 1px solid var(--success-border);
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: var(--success);
+      letter-spacing: 0.03em;
+    }
+
+    .pulsing-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--success);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 12px;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: var(--text-main);
+      font-size: 0.82rem;
+      font-weight: 500;
+      text-decoration: none;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      background: var(--card-hover);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #293896, #7351A1);
+      border-color: #20C4F4;
+      color: #fff;
+    }
+
+    .btn-primary:hover {
+      background: linear-gradient(135deg, #7351A1, #293896);
+      box-shadow: 0 0 12px rgba(32, 196, 244, 0.35);
+    }
+
+    /* Auto-refresh progress bar */
+    .refresh-bar-container {
+      width: 100%;
+      height: 3px;
+      background: var(--card-border);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: -12px;
+    }
+
+    .refresh-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #293896, #7351A1, #20C4F4);
+      box-shadow: 0 0 8px rgba(32, 196, 244, 0.4);
+      transition: width 0.1s linear;
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+      gap: 14px;
+    }
+
+    .kpi-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .kpi-card:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      transform: translateY(-2px);
+    }
+
+    .kpi-card.alert {
+      border-color: var(--danger-border);
+      background: linear-gradient(180deg, var(--card-bg) 0%, rgba(239, 68, 68, 0.08) 100%);
+    }
+
+    .kpi-card .kpi-label {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .kpi-card .kpi-value {
+      font-size: 1.85rem;
+      font-weight: 800;
+      margin-top: 8px;
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+    }
+
+    .kpi-card .kpi-sub {
+      font-size: 0.75rem;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
+    /* Filter & Search Bar */
+    .controls-bar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .search-box {
+      position: relative;
+      flex: 1;
+      max-width: 380px;
+      min-width: 240px;
+    }
+
+    .search-box input {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      padding: 9px 12px 9px 36px;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .search-box input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(32, 196, 244, 0.2);
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      font-size: 14px;
+      pointer-events: none;
+    }
+
+    .filter-pills {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+
+    .filter-pill {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      padding: 6px 12px;
+      border-radius: 20px;
+      font-size: 0.78rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-pill:hover, .filter-pill.active {
+      background: var(--card-hover);
+      border-color: var(--accent);
+      color: #fff;
+    }
+
+    .filter-pill.active {
+      background: linear-gradient(135deg, #293896, #7351A1);
+      border-color: #20C4F4;
+      color: #fff;
+      box-shadow: 0 0 10px rgba(32, 196, 244, 0.25);
+    }
+
+    /* View Switcher */
+    .view-switcher {
+      display: inline-flex;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 10px;
+      padding: 3px;
+      gap: 3px;
+    }
+
+    .view-btn {
+      background: transparent;
+      border: 1px solid transparent;
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 8px;
+      font-size: 0.80rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s ease;
+    }
+
+    .view-btn:hover {
+      color: var(--text-main);
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .view-btn.active {
+      background: linear-gradient(135deg, #293896, #7351A1);
+      color: #20C4F4;
+      border-color: #20C4F4;
+      box-shadow: 0 0 12px rgba(32, 196, 244, 0.35);
+    }
+
+    /* Table View Styles */
+    .table-container {
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      overflow-x: auto;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+    }
+
+    .lumio-table {
+      width: 100%;
+      border-collapse: collapse;
+      text-align: left;
+      font-size: 0.88rem;
+    }
+
+    .lumio-table th {
+      background: rgba(15, 23, 42, 0.9);
+      color: var(--text-muted);
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 14px 20px;
+      border-bottom: 2px solid rgba(41, 56, 150, 0.6);
+    }
+
+    .lumio-table td {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      color: var(--text-main);
+      vertical-align: middle;
+    }
+
+    .lumio-table tbody tr {
+      transition: background 0.15s ease;
+    }
+
+    .lumio-table tbody tr:hover {
+      background: rgba(41, 56, 150, 0.12);
+    }
+
+    .lumio-table tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    .table-client-name {
+      font-weight: 700;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .table-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 5px 12px;
+      border-radius: 7px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+    }
+
+    .table-status-badge.online {
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid var(--success-border);
+    }
+
+    .table-status-badge.offline {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 1px solid var(--danger-border);
+    }
+
+    .table-date-cell {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: monospace;
+      font-size: 0.90rem;
+      font-weight: 700;
+      flex-wrap: wrap;
+    }
+
+    .table-date-cell.green {
+      color: #10b981;
+    }
+
+    .table-date-cell.red {
+      color: #ef4444;
+    }
+
+    /* Client List Cards */
+    .clients-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .client-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: grid;
+      grid-template-columns: 2fr 1.8fr 2.4fr;
+      align-items: center;
+      gap: 20px;
+      transition: all 0.2s;
+    }
+
+    .client-card:hover {
+      background: var(--card-hover);
+      border-color: rgba(255, 255, 255, 0.15);
+    }
+
+    .client-card.incomplete {
+      border-left: 4px solid var(--danger);
+    }
+
+    .client-card.complete {
+      border-left: 4px solid var(--success);
+    }
+
+    /* Col 1: Identity */
+    .client-identity {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .client-name-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .client-name {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    .site-code {
+      font-size: 0.72rem;
+      font-family: monospace;
+      padding: 2px 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+
+    .client-url {
+      font-size: 0.75rem;
+      font-family: monospace;
+      color: var(--text-dim);
+    }
+
+    /* Col 2: Kuma Availability */
+    .kuma-section {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .kuma-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 0.75rem;
+    }
+
+    .device-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 6px;
+    }
+
+    .device-status-badge.online {
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid var(--success-border);
+    }
+
+    .device-status-badge.offline {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 1px solid var(--danger-border);
+    }
+
+    .kuma-metrics {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .kuma-pill {
+      background: rgba(255, 255, 255, 0.05);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-family: monospace;
+    }
+
+    /* Heartbeat Bar */
+    .heartbeat-bar {
+      display: flex;
+      gap: 2.5px;
+      align-items: center;
+      height: 18px;
+      background: rgba(0, 0, 0, 0.25);
+      padding: 2px 3px;
+      border-radius: 4px;
+    }
+
+    .hb-tick {
+      flex: 1;
+      height: 100%;
+      border-radius: 1.5px;
+      transition: opacity 0.15s, transform 0.15s;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .hb-tick:hover {
+      transform: scaleY(1.3);
+      opacity: 0.85;
+    }
+
+    .hb-tick.up {
+      background-color: var(--success);
+    }
+
+    .hb-tick.down {
+      background-color: var(--danger);
+    }
+
+    /* Col 3: Healthchecks Backup Status */
+    .backup-section {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      align-items: flex-start;
+    }
+
+    .backup-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 0.84rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+    }
+
+    .backup-badge.complete {
+      background: var(--success-bg);
+      color: var(--success);
+      border: 1px solid var(--success-border);
+    }
+
+    .backup-badge.incomplete {
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 1px solid var(--danger-border);
+      animation: alertPulse 2.5s infinite ease-in-out;
+    }
+
+    @keyframes alertPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+      50% { box-shadow: 0 0 10px 2px rgba(239, 68, 68, 0.25); }
+    }
+
+    .backup-dates-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      width: 100%;
+    }
+
+    .backup-date-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .backup-date-label {
+      font-size: 0.69rem;
+      text-transform: uppercase;
+      font-weight: 600;
+      color: var(--text-dim);
+      letter-spacing: 0.04em;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .backup-date-block.next-try .backup-date-label {
+      color: #20C4F4;
+    }
+
+    .backup-date-value {
+      font-size: 0.85rem;
+      font-family: monospace;
+      font-weight: 600;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .relative-pill {
+      font-size: 0.70rem;
+      padding: 1px 6px;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.07);
+      color: var(--text-muted);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-weight: 500;
+    }
+
+    .relative-pill.next-pill {
+      background: rgba(115, 81, 161, 0.22);
+      color: #20C4F4;
+      border: 1px solid rgba(32, 196, 244, 0.4);
+      font-weight: 600;
+    }
+
+    .backup-msg {
+      font-size: 0.73rem;
+      color: var(--text-dim);
+      max-width: 100%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Tooltip */
+    #tooltip {
+      position: absolute;
+      display: none;
+      background: #1f2937;
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-size: 0.72rem;
+      pointer-events: none;
+      z-index: 1000;
+      border: 1px solid #374151;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+      white-space: nowrap;
+    }
+
+    /* Standalone / Central Host section */
+    .section-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 10px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .standalone-card {
+      background: var(--card-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 14px 18px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    /* Footer */
+    footer {
+      margin-top: auto;
+      padding-top: 20px;
+      border-top: 1px solid var(--card-border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 0.78rem;
+      color: var(--text-dim);
+    }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .client-card {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+      .backup-section {
+        border-top: 1px solid var(--card-border);
+        padding-top: 12px;
+      }
+      .kuma-section {
+        border-top: 1px solid var(--card-border);
+        padding-top: 12px;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Header -->
+  <header>
+    <div class="brand">
+      <div class="brand-icon">🛡️</div>
+      <div class="brand-title">
+        <h1>Lumio Fleet Operations</h1>
+        <p>Centralized Real-Time Availability & Backup Telemetry</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="live-badge">
+        <span class="pulsing-dot"></span>
+        <span>LIVE TELEMETRY</span>
+      </div>
+      <div id="userBadge" class="live-badge" style="background: rgba(41, 56, 150, 0.25); border-color: rgba(32, 196, 244, 0.4); color: #20C4F4;">
+        <span>👤</span>
+        <span id="sessionUsername">Authenticated</span>
+      </div>
+      <button class="btn" onclick="fetchStatus(true)">🔄 Refresh</button>
+      <a class="btn" href="https://lumiosolutions-office.tail85d58c.ts.net" target="_blank">Healthchecks Web ↗</a>
+      <a class="btn" href="https://lumiosolutions-office.tail85d58c.ts.net:3001" target="_blank">Uptime Kuma ↗</a>
+      <a class="btn" href="/logout" style="border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;" title="Log out of dashboard">🚪 Logout</a>
+    </div>
+  </header>
+
+  <!-- Auto-refresh line -->
+  <div class="refresh-bar-container">
+    <div id="refreshBar" class="refresh-bar"></div>
+  </div>
+
+  <!-- Top KPI Cards -->
+  <section class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">
+        <span>Total Fleet Sites</span>
+        <span>🏢</span>
+      </div>
+      <div class="kpi-value" id="kpiTotalSites">--</div>
+      <div class="kpi-sub">Monitored deployments</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-label">
+        <span>Devices Online (Kuma)</span>
+        <span>🌐</span>
+      </div>
+      <div class="kpi-value" style="color: var(--success);" id="kpiOnlineDevices">--</div>
+      <div class="kpi-sub" id="kpiOfflineDevices">-- offline</div>
+    </div>
+
+    <div class="kpi-card" id="kpiBackupCompleteCard">
+      <div class="kpi-label">
+        <span>Backups Complete</span>
+        <span>🟢</span>
+      </div>
+      <div class="kpi-value" style="color: var(--success);" id="kpiCompleteBackups">--</div>
+      <div class="kpi-sub">Reported within schedule</div>
+    </div>
+
+    <div class="kpi-card" id="kpiBackupIncompleteCard">
+      <div class="kpi-label">
+        <span>Backups Incomplete</span>
+        <span>⚠️</span>
+      </div>
+      <div class="kpi-value" style="color: var(--danger);" id="kpiIncompleteBackups">--</div>
+      <div class="kpi-sub" id="kpiIncompleteSub">Requiring attention</div>
+    </div>
+
+    <div class="kpi-card">
+      <div class="kpi-label">
+        <span>Host Server Health</span>
+        <span>⚡</span>
+      </div>
+      <div class="kpi-value" style="font-size: 1.25rem; font-family: monospace;" id="kpiHostLoad">--</div>
+      <div class="kpi-sub" id="kpiHostUptime">Raspberry Pi 5</div>
+    </div>
+  </section>
+
+  <!-- Controls, Search & View Switcher -->
+  <section class="controls-bar">
+    <div class="search-box">
+      <span class="search-icon">🔍</span>
+      <input type="text" id="searchInput" placeholder="Search client name, location, site code..." oninput="filterClients()">
+    </div>
+    <div class="filter-pills">
+      <button class="filter-pill active" onclick="setFilter('all', this)">All Clients (<span id="countAll">0</span>)</button>
+      <button class="filter-pill" onclick="setFilter('incomplete', this)">🔴 Incomplete Backups (<span id="countIncomplete">0</span>)</button>
+      <button class="filter-pill" onclick="setFilter('complete', this)">🟢 Complete Backups (<span id="countComplete">0</span>)</button>
+      <button class="filter-pill" onclick="setFilter('offline', this)">🔴 Device Offline (<span id="countOffline">0</span>)</button>
+      <button class="filter-pill" onclick="setFilter('online', this)">🟢 Device Online (<span id="countOnline">0</span>)</button>
+    </div>
+    <div class="view-switcher">
+      <button class="view-btn active" id="btnTableView" onclick="setViewMode('table')" title="Switch to Table View">
+        <span>📊</span>
+        <span>Table View</span>
+      </button>
+      <button class="view-btn" id="btnListView" onclick="setViewMode('list')" title="Switch to Cards View">
+        <span>📋</span>
+        <span>List View</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- Table View Container (Default) -->
+  <section class="table-container" id="tableContainer">
+    <table class="lumio-table">
+      <thead>
+        <tr>
+          <th style="width: 38%;">Client Name</th>
+          <th style="width: 22%;">Status</th>
+          <th style="width: 40%;">Last Backup Date</th>
+        </tr>
+      </thead>
+      <tbody id="clientsTableBody">
+        <tr><td colspan="3" style="text-align: center; color: var(--text-dim); padding: 40px;">Connecting to monitoring engines...</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- Cards List View Container (Hidden when Table is active) -->
+  <section class="clients-grid" id="clientsContainer" style="display: none;">
+    <div style="text-align: center; padding: 40px; color: var(--text-dim);">Connecting to monitoring engines...</div>
+  </section>
+
+  <!-- Standalone Central Host Card -->
+  <div class="section-title">Central Monitoring Host</div>
+  <div id="standaloneContainer"></div>
+
+  <!-- Footer -->
+  <footer>
+    <div>
+      Host: <strong>lumiosolutions-office</strong> (Raspberry Pi 5) • Local IP: <code>192.168.0.129</code> • Tailscale: <code>100.85.142.34</code>
+    </div>
+    <div id="footerTimestamp">Updated: --</div>
+  </footer>
+
+  <!-- Tooltip -->
+  <div id="tooltip"></div>
+
+  <script>
+    let currentData = null;
+    let activeFilter = 'all';
+    let searchQuery = '';
+    const REFRESH_INTERVAL_SEC = 10;
+    let refreshSecondsLeft = REFRESH_INTERVAL_SEC;
+
+    async function fetchStatus(isManual = false) {
+      try {
+        const res = await fetch('/api/status');
+        if (res.status === 401) {
+          window.location.href = '/login?error=' + encodeURIComponent('Session expired. Please sign in again.');
+          return;
+        }
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const data = await res.json();
+        currentData = data;
+        renderDashboard(data);
+        refreshSecondsLeft = REFRESH_INTERVAL_SEC;
+        updateRefreshBar();
+      } catch (err) {
+        console.error('Failed to fetch status:', err);
+      }
+    }
+
+    function renderDashboard(data) {
+      // 0. User badge
+      if (data.user && document.getElementById('sessionUsername')) {
+        document.getElementById('sessionUsername').textContent = data.user.display_name || data.user.username;
+      }
+
+      // 1. KPIs
+      document.getElementById('kpiTotalSites').textContent = data.kpis.total_clients;
+      document.getElementById('kpiOnlineDevices').textContent = data.kpis.devices_online + ' / ' + data.kpis.total_clients;
+      document.getElementById('kpiOfflineDevices').textContent = data.kpis.devices_offline > 0 
+        ? `${data.kpis.devices_offline} offline currently` 
+        : 'All devices reachable';
+
+      document.getElementById('kpiCompleteBackups').textContent = data.kpis.backups_complete;
+      document.getElementById('kpiIncompleteBackups').textContent = data.kpis.backups_incomplete;
+
+      const incCard = document.getElementById('kpiBackupIncompleteCard');
+      if (data.kpis.backups_incomplete > 0) {
+        incCard.classList.add('alert');
+        document.getElementById('kpiIncompleteSub').textContent = `🚨 ${data.kpis.backups_incomplete} client(s) require attention`;
+      } else {
+        incCard.classList.remove('alert');
+        document.getElementById('kpiIncompleteSub').textContent = 'All client backups healthy';
+      }
+
+      // Host Stats
+      const sys = data.system;
+      document.getElementById('kpiHostLoad').textContent = `RAM: ${sys.ram_percent}% • Disk: ${sys.disk_free_gb}GB free`;
+      document.getElementById('kpiHostUptime').textContent = `Load: ${sys.load_1m} • Uptime: ${sys.uptime_str}`;
+
+      // Update Filter counts
+      document.getElementById('countAll').textContent = data.clients.length;
+      document.getElementById('countIncomplete').textContent = data.kpis.backups_incomplete;
+      document.getElementById('countComplete').textContent = data.kpis.backups_complete;
+      document.getElementById('countOffline').textContent = data.kpis.devices_offline;
+      document.getElementById('countOnline').textContent = data.kpis.devices_online;
+
+      document.getElementById('footerTimestamp').textContent = `Telemetry Latency: ${data.query_time_ms}ms • ${data.timestamp_local}`;
+
+      // 2. Render Clients in active view mode (Table default)
+      applyViewMode();
+
+      // 3. Render Standalone Kuma Monitors
+      renderStandaloneMonitors(data.standalone_monitors);
+    }
+
+    let currentViewMode = localStorage.getItem('lumio_view_mode') || 'table';
+
+    function setViewMode(mode) {
+      currentViewMode = mode;
+      localStorage.setItem('lumio_view_mode', mode);
+      applyViewMode();
+    }
+
+    function applyViewMode() {
+      const btnTable = document.getElementById('btnTableView');
+      const btnList = document.getElementById('btnListView');
+      const tableContainer = document.getElementById('tableContainer');
+      const cardsContainer = document.getElementById('clientsContainer');
+
+      if (!btnTable || !btnList || !tableContainer || !cardsContainer) return;
+
+      if (currentViewMode === 'table') {
+        btnTable.classList.add('active');
+        btnList.classList.remove('active');
+        tableContainer.style.display = 'block';
+        cardsContainer.style.display = 'none';
+        renderClientsTable();
+      } else {
+        btnList.classList.add('active');
+        btnTable.classList.remove('active');
+        tableContainer.style.display = 'none';
+        cardsContainer.style.display = 'grid';
+        renderClientsList();
+      }
+    }
+
+    function getFilteredClients() {
+      if (!currentData || !currentData.clients) return [];
+      const clients = currentData.clients;
+      const q = searchQuery.toLowerCase();
+
+      return clients.filter(c => {
+        const matchesSearch = !q || 
+          c.client_name.toLowerCase().includes(q) || 
+          (c.site_code && c.site_code.toLowerCase().includes(q)) ||
+          (c.kuma_url && c.kuma_url.toLowerCase().includes(q)) ||
+          (c.next_expected_date && c.next_expected_date.toLowerCase().includes(q)) ||
+          (c.last_backup_date && c.last_backup_date.toLowerCase().includes(q));
+
+        if (!matchesSearch) return false;
+
+        if (activeFilter === 'incomplete') return !c.backup_complete;
+        if (activeFilter === 'complete') return c.backup_complete;
+        if (activeFilter === 'offline') return !c.device_online;
+        if (activeFilter === 'online') return c.device_online;
+        return true;
+      });
+    }
+
+    function renderClientsTable() {
+      const tbody = document.getElementById('clientsTableBody');
+      if (!tbody) return;
+      const filtered = getFilteredClients();
+
+      if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 40px; color: var(--text-dim);">No client sites matching filter criteria.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = filtered.map(c => {
+        const isOnline = c.device_online;
+        const statusBadgeClass = isOnline ? 'online' : 'offline';
+        const statusDotClass = isOnline ? 'green' : 'red';
+        const statusLabel = isOnline ? 'ONLINE' : 'OFFLINE';
+
+        // Requirement: if there's more than one automatic backup failed make the date in red, if not make it green
+        const hasMultipleFailed = c.has_multiple_failures;
+        const dateColorClass = hasMultipleFailed ? 'red' : 'green';
+        const pillClass = hasMultipleFailed ? 'red-pill' : 'green-pill';
+
+        let failedNote = '';
+        if (hasMultipleFailed) {
+          failedNote = ` (${c.failed_backups_count} failed)`;
+        } else if (c.failed_backups_count === 1) {
+          failedNote = ` (1 missed)`;
+        }
+
+        return `
+          <tr>
+            <td>
+              <div class="table-client-name">
+                <span>${escapeHtml(c.client_name)}</span>
+                ${c.site_code ? `<span class="site-code">${escapeHtml(c.site_code)}</span>` : ''}
+              </div>
+            </td>
+            <td>
+              <span class="table-status-badge ${statusBadgeClass}">
+                <span class="status-dot ${statusDotClass}"></span>
+                <span>${statusLabel}</span>
+              </span>
+            </td>
+            <td>
+              <div class="table-date-cell ${dateColorClass}">
+                <span>${c.last_backup_date}</span>
+                <span class="relative-pill ${pillClass}">
+                  ${c.last_backup_relative}${failedNote}
+                </span>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderClientsList() {
+      if (!currentData) return;
+      const container = document.getElementById('clientsContainer');
+      const filtered = getFilteredClients();
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--text-dim); background: var(--card-bg); border-radius: 12px; border: 1px solid var(--card-border);">No client sites matching filter criteria.</div>`;
+        return;
+      }
+
+      container.innerHTML = filtered.map(c => {
+        const isBackupComplete = c.backup_complete;
+        const cardClass = isBackupComplete ? 'complete' : 'incomplete';
+        const backupBadgeClass = isBackupComplete ? 'complete' : 'incomplete';
+        const backupIcon = isBackupComplete ? '✓' : '⚠';
+
+        const isOnline = c.device_online;
+        const deviceBadgeClass = isOnline ? 'online' : 'offline';
+        const deviceIcon = isOnline ? '●' : '✕';
+
+        // Heartbeats bar
+        const heartbeatsHtml = renderHeartbeatTicks(c.device_heartbeats, c.kuma_name);
+
+        return `
+          <div class="client-card ${cardClass}">
+            <!-- Col 1: Identity -->
+            <div class="client-identity">
+              <div class="client-name-row">
+                <span class="client-name">${escapeHtml(c.client_name)}</span>
+                ${c.site_code ? `<span class="site-code">${c.site_code}</span>` : ''}
+              </div>
+              <div class="client-url">${c.kuma_url ? escapeHtml(cleanUrl(c.kuma_url)) : 'Tailscale mesh node'}</div>
+            </div>
+
+            <!-- Col 2: Kuma Availability -->
+            <div class="kuma-section">
+              <div class="kuma-header">
+                <span class="device-status-badge ${deviceBadgeClass}">
+                  <span>${deviceIcon}</span>
+                  <span>${c.device_status_label}</span>
+                </span>
+                <div class="kuma-metrics">
+                  ${isOnline ? `<span class="kuma-pill">${c.device_ping_ms} ms</span>` : ''}
+                  <span class="kuma-pill">${c.device_uptime_24h}% 24h</span>
+                </div>
+              </div>
+              <div class="heartbeat-bar">
+                ${heartbeatsHtml}
+              </div>
+            </div>
+
+            <!-- Col 3: Healthchecks Backup Status & Dates -->
+            <div class="backup-section">
+              <div class="backup-badge ${backupBadgeClass}">
+                <span>${backupIcon}</span>
+                <span>${c.backup_status_label}</span>
+              </div>
+              <div class="backup-dates-grid">
+                <div class="backup-date-block">
+                  <div class="backup-date-label">
+                    <span>🕒</span>
+                    <span>Last Backup Run</span>
+                  </div>
+                  <div class="backup-date-value">
+                    <span>${c.last_backup_date}</span>
+                    <span class="relative-pill">${c.last_backup_relative}</span>
+                  </div>
+                </div>
+                <div class="backup-date-block next-try">
+                  <div class="backup-date-label">
+                    <span>⏳</span>
+                    <span>Next Expected Try</span>
+                  </div>
+                  <div class="backup-date-value">
+                    <span>${c.next_expected_date}</span>
+                    <span class="relative-pill next-pill">${c.next_expected_relative}</span>
+                  </div>
+                </div>
+              </div>
+              ${c.last_backup_message ? `<div class="backup-msg" title="${escapeHtml(c.last_backup_message)}">${escapeHtml(c.last_backup_message)}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function renderHeartbeatTicks(hbs, monitorName) {
+      if (!hbs || hbs.length === 0) {
+        return `<span style="font-size: 0.7rem; color: var(--text-dim); padding-left: 6px;">No heartbeat pings recorded</span>`;
+      }
+
+      return hbs.map(h => {
+        const isUp = h.status === 1;
+        const tickClass = isUp ? 'up' : 'down';
+        const tooltipText = `${escapeHtml(monitorName)} | ${isUp ? 'UP (' + h.ping + 'ms)' : 'DOWN'} | ${h.time}`;
+        return `<div class="hb-tick ${tickClass}" onmouseenter="showTooltip(event, '${tooltipText}')" onmouseleave="hideTooltip()"></div>`;
+      }).join('');
+    }
+
+    function renderStandaloneMonitors(monitors) {
+      const container = document.getElementById('standaloneContainer');
+      if (!monitors || monitors.length === 0) {
+        container.innerHTML = '';
+        return;
+      }
+
+      container.innerHTML = monitors.map(m => {
+        const isUp = m.status === 'online';
+        const badgeClass = isUp ? 'online' : 'offline';
+        const icon = isUp ? '●' : '✕';
+        const hbsHtml = renderHeartbeatTicks(m.heartbeats, m.name);
+
+        return `
+          <div class="standalone-card">
+            <div>
+              <div style="font-weight: 700; font-size: 0.95rem; margin-bottom: 2px;">${escapeHtml(m.name)}</div>
+              <div style="font-size: 0.75rem; color: var(--text-dim); font-family: monospace;">${escapeHtml(m.url)}</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
+              <span class="device-status-badge ${badgeClass}">
+                <span>${icon}</span>
+                <span>${m.status.toUpperCase()}</span>
+              </span>
+              <span class="kuma-pill">${m.ping} ms</span>
+              <span class="kuma-pill">${m.uptime_24h}% 24h</span>
+              <div class="heartbeat-bar" style="width: 220px;">${hbsHtml}</div>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Filter and Search logic
+    function setFilter(filter, el) {
+      activeFilter = filter;
+      document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      applyViewMode();
+    }
+
+    function filterClients() {
+      searchQuery = document.getElementById('searchInput').value.trim();
+      applyViewMode();
+    }
+
+    function cleanUrl(url) {
+      return url.replace('http://', '').replace('https://', '').replace('/manifest.json', '');
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Tooltip management
+    const tooltip = document.getElementById('tooltip');
+    function showTooltip(e, text) {
+      tooltip.textContent = text;
+      tooltip.style.display = 'block';
+      tooltip.style.left = (e.pageX + 10) + 'px';
+      tooltip.style.top = (e.pageY + 15) + 'px';
+    }
+
+    function hideTooltip() {
+      tooltip.style.display = 'none';
+    }
+
+    // Progress bar update
+    function updateRefreshBar() {
+      const pct = ((REFRESH_INTERVAL_SEC - refreshSecondsLeft) / REFRESH_INTERVAL_SEC) * 100;
+      document.getElementById('refreshBar').style.width = pct + '%';
+    }
+
+    setInterval(() => {
+      refreshSecondsLeft--;
+      if (refreshSecondsLeft <= 0) {
+        fetchStatus();
+      } else {
+        updateRefreshBar();
+      }
+    }, 1000);
+
+    // Initial load
+    fetchStatus();
+  </script>
+</body>
+</html>

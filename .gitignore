@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.auth.json
+.auth.json.tmp
+sessions.db*
+*.tmp
