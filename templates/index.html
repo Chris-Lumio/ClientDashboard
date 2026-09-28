@@ -1393,10 +1393,17 @@
         refreshSecondsLeft = REFRESH_INTERVAL_SEC;
       } catch (err) {
         console.error('Failed to fetch status:', err);
+        const tbody = document.getElementById('clientsTableBody');
+        if (tbody && (!currentData || !currentData.clients)) {
+          tbody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: var(--danger); padding: 40px;">Unable to reach telemetry backend. Retrying in 10s...</td></tr>';
+        }
       }
     }
 
     function renderDashboard(data) {
+      if (!data) return;
+      currentData = data;
+
       // 0. User badge
       if (data.user && document.getElementById('sessionUsername')) {
         document.getElementById('sessionUsername').textContent = data.user.display_name || data.user.username;
@@ -1554,7 +1561,6 @@
         }
 
         const heartbeatsHtml = renderHeartbeatTicks(c.device_heartbeats, c.kuma_name);
-        const hasMultipleFailed = c.has_multiple_failures;
 
         const detailsRow = `
           <tr class="table-details-row">
