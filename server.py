@@ -338,7 +338,8 @@ def get_dashboard_data(user_info=None):
             has_multiple_failures = (failed_backups_count > 1)
             date_color = "red" if has_multiple_failures else "green"
 
-            is_complete = (status == "up")
+            # A backup is successful/complete if it has recorded runs and not failed multiple times (<= 1 missed)
+            is_complete = (parsed_ping is not None) and (not has_multiple_failures)
             hc_checks.append({
                 "id": c_id,
                 "name": name,

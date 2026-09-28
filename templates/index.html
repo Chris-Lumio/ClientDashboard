@@ -1554,17 +1554,17 @@
         }
 
         const heartbeatsHtml = renderHeartbeatTicks(c.device_heartbeats, c.kuma_name);
-        const hasMissed = c.failed_backups_count > 0;
+        const hasMultipleFailed = c.has_multiple_failures;
 
         const detailsRow = `
           <tr class="table-details-row">
             <td colspan="4">
               <div class="details-panel">
-                ${hasMissed ? `
+                ${hasMultipleFailed ? `
                   <div class="details-alert-banner">
                     <svg class="icon" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
                     <div class="alert-content">
-                      <span class="alert-title">${c.failed_backups_count} missed automatic backup${c.failed_backups_count > 1 ? 's' : ''} detected</span>
+                      <span class="alert-title">${c.failed_backups_count} missed automatic backups detected</span>
                       <span class="alert-sub">Last successful backup was recorded ${c.last_backup_relative}. Immediate inspection recommended.</span>
                     </div>
                   </div>
@@ -1584,7 +1584,7 @@
                       </div>
                       <div class="details-kv">
                         <span class="kv-key">Missed Backups</span>
-                        <span class="kv-val ${hasMissed ? 'val-bad' : 'val-good'}">${hasMissed ? `${c.failed_backups_count} missed` : 'None (Healthy)'}</span>
+                        <span class="kv-val ${hasMultipleFailed ? 'val-bad' : 'val-good'}">${hasMultipleFailed ? `${c.failed_backups_count} missed` : (c.failed_backups_count === 1 ? '1 missed (within grace)' : 'None (Healthy)')}</span>
                       </div>
                       <div class="details-kv">
                         <span class="kv-key">Last Backup Run</span>
