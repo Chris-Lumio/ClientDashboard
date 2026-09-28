@@ -345,6 +345,104 @@
       letter-spacing: 0.02em;
     }
 
+    .account-chip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 14px;
+      background: rgba(32, 196, 244, 0.08);
+      border: 1px solid rgba(32, 196, 244, 0.28);
+      border-radius: 10px;
+      margin-bottom: 16px;
+    }
+
+    .account-chip-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .account-chip-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--brand-gradient-diag);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-weight: 700;
+      font-size: 0.82rem;
+      flex-shrink: 0;
+    }
+
+    .account-chip-details {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .account-chip-name {
+      font-size: 0.88rem;
+      font-weight: 600;
+      color: var(--text-main);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .account-chip-email {
+      font-size: 0.74rem;
+      color: var(--accent);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .btn-text-link {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 0.76rem;
+      font-family: inherit;
+      cursor: pointer;
+      text-decoration: underline;
+      padding: 4px;
+      transition: color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .btn-text-link:hover {
+      color: #fff;
+    }
+
+    .setup-banner {
+      background: rgba(115, 81, 161, 0.16);
+      border: 1px solid rgba(115, 81, 161, 0.35);
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.82rem;
+      color: rgba(255, 255, 255, 0.88);
+      line-height: 1.45;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .setup-banner .icon {
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .field-hint {
+      font-size: 0.74rem;
+      color: var(--text-dim);
+      margin-top: 4px;
+    }
+
     @media (max-width: 480px) {
       .login-container { padding: 28px 22px 22px; }
     }
@@ -360,21 +458,45 @@
 
   <div class="login-container">
     <div class="brand-header">
-      <div class="security-badge">
+      <div class="security-badge" id="securityBadge">
         <svg class="icon" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-        <span>Secure Access</span>
+        <span id="securityBadgeText">Secure Access</span>
       </div>
-      <h1>Fleet Operations</h1>
-      <p>Sign in to the telemetry &amp; monitoring dashboard.</p>
+      <h1 id="headerTitle">Fleet Operations</h1>
+      <p id="headerSubtitle">Sign in to the telemetry &amp; monitoring dashboard.</p>
     </div>
 
     <!-- Error Banner (Server Replaced) -->
     <!-- ERROR_BANNER_PLACEHOLDER -->
+    <div id="clientErrorBanner" class="alert" style="display: none;">
+      <span class="alert-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+      <span id="clientErrorMsg"></span>
+    </div>
 
-    <form method="POST" action="/login">
+    <form id="authForm" method="POST" action="/login">
       <input type="hidden" name="next" value="{{NEXT_URL}}">
+      <input type="hidden" id="setupUsername" name="username" value="{{TARGET_USERNAME}}" disabled>
 
-      <div class="form-group">
+      <!-- Account Chip for Set Password Mode -->
+      <div id="accountChipGroup" style="display: none;">
+        <div class="setup-banner">
+          <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span>Welcome! Please set a new password for your account to continue.</span>
+        </div>
+        <div class="account-chip">
+          <div class="account-chip-info">
+            <div class="account-chip-avatar" id="chipAvatar">R</div>
+            <div class="account-chip-details">
+              <span class="account-chip-name" id="chipName">Rawad</span>
+              <span class="account-chip-email" id="chipEmail">rawad@lumiosolutions.com</span>
+            </div>
+          </div>
+          <button type="button" class="btn-text-link" onclick="switchToLoginMode()">Switch</button>
+        </div>
+      </div>
+
+      <!-- Normal Username input -->
+      <div class="form-group" id="usernameGroup">
         <label for="username">Username or Email</label>
         <div class="input-wrapper">
           <span class="input-icon"><svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span>
@@ -390,7 +512,8 @@
         </div>
       </div>
 
-      <div class="form-group">
+      <!-- Normal Password input -->
+      <div class="form-group" id="loginPasswordGroup">
         <label for="password">Password</label>
         <div class="input-wrapper">
           <span class="input-icon"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
@@ -402,8 +525,47 @@
             required
             autocomplete="current-password"
           >
-          <button type="button" class="toggle-pwd" id="togglePwdBtn" onclick="togglePasswordVisibility()" title="Show password" aria-label="Show password">
+          <button type="button" class="toggle-pwd" id="togglePwdBtn" onclick="togglePasswordVisibility('password', 'eyeIcon', 'togglePwdBtn')" title="Show password" aria-label="Show password">
             <svg class="icon" id="eyeIcon" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- New Password input (Set Password Mode) -->
+      <div class="form-group" id="newPasswordGroup" style="display: none;">
+        <label for="new_password">Create New Password</label>
+        <div class="input-wrapper">
+          <span class="input-icon"><svg class="icon" viewBox="0 0 24 24"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></span>
+          <input
+            type="password"
+            id="new_password"
+            name="new_password"
+            placeholder="At least 6 characters"
+            autocomplete="new-password"
+            disabled
+          >
+          <button type="button" class="toggle-pwd" id="toggleNewPwdBtn" onclick="togglePasswordVisibility('new_password', 'eyeIconNew', 'toggleNewPwdBtn')" title="Show password" aria-label="Show password">
+            <svg class="icon" id="eyeIconNew" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+          </button>
+        </div>
+        <div class="field-hint">Must be at least 6 characters.</div>
+      </div>
+
+      <!-- Confirm Password input (Set Password Mode) -->
+      <div class="form-group" id="confirmPasswordGroup" style="display: none;">
+        <label for="confirm_password">Confirm New Password</label>
+        <div class="input-wrapper">
+          <span class="input-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></span>
+          <input
+            type="password"
+            id="confirm_password"
+            name="confirm_password"
+            placeholder="Re-enter your password"
+            autocomplete="new-password"
+            disabled
+          >
+          <button type="button" class="toggle-pwd" id="toggleConfirmPwdBtn" onclick="togglePasswordVisibility('confirm_password', 'eyeIconConfirm', 'toggleConfirmPwdBtn')" title="Show password" aria-label="Show password">
+            <svg class="icon" id="eyeIconConfirm" viewBox="0 0 24 24"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
         </div>
       </div>
@@ -415,8 +577,8 @@
         </label>
       </div>
 
-      <button type="submit" class="btn-submit">
-        <span>Sign in</span>
+      <button type="submit" class="btn-submit" id="submitBtn">
+        <span id="submitBtnText">Sign in</span>
         <svg class="icon" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg>
       </button>
     </form>
@@ -433,16 +595,179 @@
     const EYE_OPEN = '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
     const EYE_OFF = '<path d="M9.9 4.2A10 10 0 0 1 12 4c6.5 0 10 8 10 8a17 17 0 0 1-3.2 4.2"/><path d="M6.6 6.6A17 17 0 0 0 2 12s3.5 7 10 7a9.7 9.7 0 0 0 5.4-1.6"/><path d="M9.9 9.9a3 3 0 0 0 4.2 4.2"/><path d="m2 2 20 20"/>';
 
-    function togglePasswordVisibility() {
-      const pwd = document.getElementById('password');
-      const btn = document.getElementById('togglePwdBtn');
-      const icon = document.getElementById('eyeIcon');
+    function togglePasswordVisibility(fieldId, iconId, btnId) {
+      const pwd = document.getElementById(fieldId);
+      const btn = document.getElementById(btnId);
+      const icon = document.getElementById(iconId);
+      if (!pwd || !btn || !icon) return;
       const show = pwd.type === 'password';
       pwd.type = show ? 'text' : 'password';
       icon.innerHTML = show ? EYE_OFF : EYE_OPEN;
       const label = show ? 'Hide password' : 'Show password';
       btn.title = label;
       btn.setAttribute('aria-label', label);
+    }
+
+    let currentMode = 'login';
+    const INITIAL_MODE = "{{INITIAL_MODE}}";
+    const TARGET_USERNAME = "{{TARGET_USERNAME}}";
+    const DISPLAY_NAME = "{{DISPLAY_NAME}}";
+
+    function showError(msg) {
+      const banner = document.getElementById('clientErrorBanner');
+      const txt = document.getElementById('clientErrorMsg');
+      if (banner && txt) {
+        txt.textContent = msg;
+        banner.style.display = 'flex';
+      }
+    }
+
+    function clearError() {
+      const banner = document.getElementById('clientErrorBanner');
+      if (banner) banner.style.display = 'none';
+    }
+
+    function switchToSetupMode(username, displayName) {
+      currentMode = 'set_password';
+      clearError();
+      const form = document.getElementById('authForm');
+      form.action = '/set-password';
+
+      document.getElementById('headerTitle').textContent = 'Account Setup';
+      document.getElementById('headerSubtitle').textContent = 'Create your password to access Lumio Fleet Operations.';
+      document.getElementById('securityBadgeText').textContent = 'First Time Setup';
+
+      // Hide and disable login username/password fields
+      document.getElementById('usernameGroup').style.display = 'none';
+      const uInput = document.getElementById('username');
+      uInput.removeAttribute('required');
+      uInput.disabled = true;
+
+      document.getElementById('loginPasswordGroup').style.display = 'none';
+      const pInput = document.getElementById('password');
+      pInput.removeAttribute('required');
+      pInput.disabled = true;
+
+      // Show and populate account chip
+      const chipGroup = document.getElementById('accountChipGroup');
+      chipGroup.style.display = 'block';
+      const chipName = document.getElementById('chipName');
+      const chipEmail = document.getElementById('chipEmail');
+      const chipAvatar = document.getElementById('chipAvatar');
+      const setupUsernameInput = document.getElementById('setupUsername');
+
+      const cleanUser = username || 'User';
+      const disp = displayName || cleanUser.split('@')[0];
+      const capDisp = disp.charAt(0).toUpperCase() + disp.slice(1);
+      chipName.textContent = capDisp;
+      chipEmail.textContent = cleanUser;
+      chipAvatar.textContent = (disp.charAt(0) || 'U').toUpperCase();
+      setupUsernameInput.value = cleanUser;
+      setupUsernameInput.disabled = false;
+
+      // Show and enable new password fields
+      document.getElementById('newPasswordGroup').style.display = 'block';
+      const newPwd = document.getElementById('new_password');
+      newPwd.setAttribute('required', 'required');
+      newPwd.disabled = false;
+
+      document.getElementById('confirmPasswordGroup').style.display = 'block';
+      const confirmPwd = document.getElementById('confirm_password');
+      confirmPwd.setAttribute('required', 'required');
+      confirmPwd.disabled = false;
+
+      document.getElementById('submitBtnText').textContent = 'Save Password & Sign in';
+      setTimeout(() => newPwd.focus(), 50);
+    }
+
+    function switchToLoginMode() {
+      currentMode = 'login';
+      clearError();
+      const form = document.getElementById('authForm');
+      form.action = '/login';
+
+      document.getElementById('headerTitle').textContent = 'Fleet Operations';
+      document.getElementById('headerSubtitle').textContent = 'Sign in to the telemetry & monitoring dashboard.';
+      document.getElementById('securityBadgeText').textContent = 'Secure Access';
+
+      document.getElementById('accountChipGroup').style.display = 'none';
+      document.getElementById('setupUsername').disabled = true;
+
+      document.getElementById('usernameGroup').style.display = 'block';
+      const uInput = document.getElementById('username');
+      uInput.setAttribute('required', 'required');
+      uInput.disabled = false;
+
+      document.getElementById('loginPasswordGroup').style.display = 'block';
+      const pwdInput = document.getElementById('password');
+      pwdInput.setAttribute('required', 'required');
+      pwdInput.disabled = false;
+
+      document.getElementById('newPasswordGroup').style.display = 'none';
+      const newPwd = document.getElementById('new_password');
+      newPwd.removeAttribute('required');
+      newPwd.disabled = true;
+      newPwd.value = '';
+
+      document.getElementById('confirmPasswordGroup').style.display = 'none';
+      const confirmPwd = document.getElementById('confirm_password');
+      confirmPwd.removeAttribute('required');
+      confirmPwd.disabled = true;
+      confirmPwd.value = '';
+
+      document.getElementById('submitBtnText').textContent = 'Sign in';
+      uInput.focus();
+    }
+
+    // Client-side validation before form submission
+    document.getElementById('authForm').addEventListener('submit', function(e) {
+      if (currentMode === 'set_password') {
+        const p1 = document.getElementById('new_password').value;
+        const p2 = document.getElementById('confirm_password').value;
+        if (p1.length < 6) {
+          e.preventDefault();
+          showError('Password must be at least 6 characters long.');
+          document.getElementById('new_password').focus();
+          return false;
+        }
+        if (p1 !== p2) {
+          e.preventDefault();
+          showError('Passwords do not match. Please re-enter and confirm.');
+          document.getElementById('confirm_password').focus();
+          return false;
+        }
+      }
+    });
+
+    // Dynamic account check on username input
+    let checkTimeout = null;
+    const usernameInput = document.getElementById('username');
+
+    function checkUserSetupState() {
+      const val = (usernameInput.value || '').trim();
+      if (!val || val.length < 3) return;
+      fetch('/api/auth/check?username=' + encodeURIComponent(val))
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.must_set_password) {
+            switchToSetupMode(data.username, data.display_name);
+          }
+        })
+        .catch(() => {});
+    }
+
+    usernameInput.addEventListener('input', function() {
+      clearTimeout(checkTimeout);
+      checkTimeout = setTimeout(checkUserSetupState, 400);
+    });
+
+    usernameInput.addEventListener('blur', function() {
+      checkUserSetupState();
+    });
+
+    // Check if initialized directly in set_password mode by server
+    if (INITIAL_MODE === 'set_password' && TARGET_USERNAME) {
+      switchToSetupMode(TARGET_USERNAME, DISPLAY_NAME);
     }
   </script>
 </body>

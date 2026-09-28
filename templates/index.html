@@ -636,6 +636,208 @@
     .table-date-cell.green { color: var(--success); }
     .table-date-cell.red { color: var(--danger); }
 
+    .client-table-row {
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .client-table-row.expanded {
+      background: rgba(32, 196, 244, 0.08) !important;
+    }
+
+    .row-expand-cell {
+      text-align: right;
+      padding-right: 18px !important;
+      color: var(--text-dim);
+    }
+
+    .expand-chevron {
+      width: 18px;
+      height: 18px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      transition: transform 0.25s ease, color 0.2s ease;
+      vertical-align: middle;
+    }
+
+    .client-table-row:hover .expand-chevron {
+      color: var(--accent);
+    }
+
+    .client-table-row.expanded .expand-chevron {
+      transform: rotate(180deg);
+      color: var(--accent);
+    }
+
+    /* Expanded Details Row */
+    .table-details-row td {
+      padding: 0 !important;
+      background: rgba(14, 18, 54, 0.7) !important;
+      border-bottom: 2px solid rgba(32, 196, 244, 0.35) !important;
+    }
+
+    .details-panel {
+      padding: 20px 24px;
+      animation: detailsSlideDown 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    @keyframes detailsSlideDown {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .details-alert-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px 16px;
+      background: rgba(248, 113, 113, 0.12);
+      border: 1px solid rgba(248, 113, 113, 0.35);
+      border-radius: 10px;
+      color: var(--danger);
+      margin-bottom: 16px;
+    }
+
+    .details-alert-banner .icon {
+      width: 22px;
+      height: 22px;
+      flex-shrink: 0;
+    }
+
+    .details-alert-banner .alert-content {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .details-alert-banner .alert-title {
+      font-weight: 700;
+      font-size: 0.88rem;
+    }
+
+    .details-alert-banner .alert-sub {
+      font-size: 0.78rem;
+      color: rgba(255, 255, 255, 0.75);
+    }
+
+    .details-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+    }
+
+    .details-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(170, 180, 255, 0.12);
+      border-radius: 10px;
+      padding: 16px 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .details-card-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      padding-bottom: 8px;
+    }
+
+    .details-card-header .icon {
+      width: 16px;
+      height: 16px;
+      color: var(--accent);
+    }
+
+    .details-kv-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+
+    .details-kv {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      font-size: 0.82rem;
+    }
+
+    .details-kv .kv-key {
+      color: var(--text-muted);
+      font-size: 0.78rem;
+      flex-shrink: 0;
+    }
+
+    .details-kv .kv-val {
+      color: var(--text-main);
+      font-weight: 500;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .details-kv .kv-val.val-good {
+      color: var(--success);
+      font-weight: 600;
+    }
+
+    .details-kv .kv-val.val-bad {
+      color: var(--danger);
+      font-weight: 600;
+    }
+
+    .details-kv .kv-val.val-mono {
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      color: var(--text-dim);
+    }
+
+    .details-msg-block {
+      margin-top: 6px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .details-msg-block .msg-title {
+      font-size: 0.74rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    .details-msg-content {
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font-family: var(--font-mono);
+      font-size: 0.74rem;
+      color: #a5b4fc;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 120px;
+      overflow-y: auto;
+      margin: 0;
+    }
+
+    .details-hb-wrapper {
+      margin-top: 4px;
+      padding-top: 8px;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
     /* Client List Cards */
     .clients-grid {
       display: grid;
@@ -1123,13 +1325,14 @@
     <table class="lumio-table">
       <thead>
         <tr>
-          <th style="width: 38%;">Client Name</th>
-          <th style="width: 22%;">Status</th>
+          <th style="width: 36%;">Client Name</th>
+          <th style="width: 18%;">Status</th>
           <th style="width: 40%;">Last Backup Date</th>
+          <th style="width: 6%; text-align: right;"></th>
         </tr>
       </thead>
       <tbody id="clientsTableBody">
-        <tr><td colspan="3" style="text-align: center; color: var(--text-dim); padding: 40px;">Connecting to monitoring engines...</td></tr>
+        <tr><td colspan="4" style="text-align: center; color: var(--text-dim); padding: 40px;">Connecting to monitoring engines...</td></tr>
       </tbody>
     </table>
   </section>
@@ -1162,8 +1365,19 @@
     let currentData = null;
     let activeFilter = 'all';
     let searchQuery = '';
+    const expandedClientIds = new Set();
     const REFRESH_INTERVAL_SEC = 10;
     let refreshSecondsLeft = REFRESH_INTERVAL_SEC;
+
+    function toggleClientRow(id) {
+      const strId = String(id);
+      if (expandedClientIds.has(strId)) {
+        expandedClientIds.delete(strId);
+      } else {
+        expandedClientIds.add(strId);
+      }
+      renderClientsTable();
+    }
 
     async function fetchStatus(isManual = false) {
       try {
@@ -1288,11 +1502,14 @@
       const filtered = getFilteredClients();
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="3" style="text-align: center; padding: 40px; color: var(--text-dim);">No client sites matching filter criteria.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align: center; padding: 40px; color: var(--text-dim);">No client sites matching filter criteria.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = filtered.map(c => {
+        const clientId = String(c.hc_id || c.client_name);
+        const isExpanded = expandedClientIds.has(clientId);
+
         const isOnline = c.device_online;
         const statusBadgeClass = isOnline ? 'online' : 'offline';
         const statusDotClass = isOnline ? 'green' : 'red';
@@ -1303,15 +1520,9 @@
         const dateColorClass = hasMultipleFailed ? 'red' : 'green';
         const pillClass = hasMultipleFailed ? 'red-pill' : 'green-pill';
 
-        let failedNote = '';
-        if (hasMultipleFailed) {
-          failedNote = ` (${c.failed_backups_count} failed)`;
-        } else if (c.failed_backups_count === 1) {
-          failedNote = ` (1 missed)`;
-        }
-
-        return `
-          <tr>
+        // Summary row: Clean display without missed backup count (details shown only when pressed)
+        const summaryRow = `
+          <tr class="client-table-row ${isExpanded ? 'expanded' : ''}" onclick="toggleClientRow('${escapeHtml(clientId)}')">
             <td>
               <div class="table-client-name">
                 <span>${escapeHtml(c.client_name)}</span>
@@ -1328,12 +1539,117 @@
               <div class="table-date-cell ${dateColorClass}">
                 <span>${c.last_backup_date}</span>
                 <span class="relative-pill ${pillClass}">
-                  ${c.last_backup_relative}${failedNote}
+                  ${c.last_backup_relative}
                 </span>
+              </div>
+            </td>
+            <td class="row-expand-cell">
+              <svg class="expand-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>
+            </td>
+          </tr>
+        `;
+
+        if (!isExpanded) {
+          return summaryRow;
+        }
+
+        const heartbeatsHtml = renderHeartbeatTicks(c.device_heartbeats, c.kuma_name);
+        const hasMissed = c.failed_backups_count > 0;
+
+        const detailsRow = `
+          <tr class="table-details-row">
+            <td colspan="4">
+              <div class="details-panel">
+                ${hasMissed ? `
+                  <div class="details-alert-banner">
+                    <svg class="icon" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+                    <div class="alert-content">
+                      <span class="alert-title">${c.failed_backups_count} missed automatic backup${c.failed_backups_count > 1 ? 's' : ''} detected</span>
+                      <span class="alert-sub">Last successful backup was recorded ${c.last_backup_relative}. Immediate inspection recommended.</span>
+                    </div>
+                  </div>
+                ` : ''}
+
+                <div class="details-grid">
+                  <!-- Backup Schedule & Logs -->
+                  <div class="details-card">
+                    <div class="details-card-header">
+                      <svg class="icon" viewBox="0 0 24 24"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>
+                      <span>Backup Telemetry & Schedule</span>
+                    </div>
+                    <div class="details-kv-list">
+                      <div class="details-kv">
+                        <span class="kv-key">Backup Health</span>
+                        <span class="kv-val ${c.backup_complete ? 'val-good' : 'val-bad'}">${c.backup_status_label}</span>
+                      </div>
+                      <div class="details-kv">
+                        <span class="kv-key">Missed Backups</span>
+                        <span class="kv-val ${hasMissed ? 'val-bad' : 'val-good'}">${hasMissed ? `${c.failed_backups_count} missed` : 'None (Healthy)'}</span>
+                      </div>
+                      <div class="details-kv">
+                        <span class="kv-key">Last Backup Run</span>
+                        <span class="kv-val">${c.last_backup_date} (${c.last_backup_relative})</span>
+                      </div>
+                      <div class="details-kv">
+                        <span class="kv-key">Next Expected Try</span>
+                        <span class="kv-val">${c.next_expected_date} (${c.next_expected_relative})</span>
+                      </div>
+                      ${c.next_deadline_date && c.next_deadline_date !== 'N/A' ? `
+                      <div class="details-kv">
+                        <span class="kv-key">Grace Deadline</span>
+                        <span class="kv-val">${c.next_deadline_date} (${c.next_deadline_relative})</span>
+                      </div>` : ''}
+                      ${c.last_backup_message ? `
+                      <div class="details-msg-block">
+                        <span class="msg-title">Last Backup Log / Payload:</span>
+                        <pre class="details-msg-content">${escapeHtml(c.last_backup_message)}</pre>
+                      </div>` : ''}
+                    </div>
+                  </div>
+
+                  <!-- Device Telemetry -->
+                  <div class="details-card">
+                    <div class="details-card-header">
+                      <svg class="icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3a14 14 0 0 1 0 18a14 14 0 0 1 0-18"/></svg>
+                      <span>Device Telemetry (Uptime Kuma)</span>
+                    </div>
+                    <div class="details-kv-list">
+                      <div class="details-kv">
+                        <span class="kv-key">Monitor Name</span>
+                        <span class="kv-val">${escapeHtml(c.kuma_name)}</span>
+                      </div>
+                      <div class="details-kv">
+                        <span class="kv-key">Network Status</span>
+                        <span class="kv-val ${isOnline ? 'val-good' : 'val-bad'}">${c.device_status_label}</span>
+                      </div>
+                      <div class="details-kv">
+                        <span class="kv-key">Response Latency</span>
+                        <span class="kv-val">${isOnline ? `${c.device_ping_ms} ms` : 'Unreachable'}</span>
+                      </div>
+                      <div class="details-kv">
+                        <span class="kv-key">24h Availability</span>
+                        <span class="kv-val">${c.device_uptime_24h}%</span>
+                      </div>
+                      ${c.kuma_url ? `
+                      <div class="details-kv">
+                        <span class="kv-key">Endpoint URL</span>
+                        <span class="kv-val val-mono">${escapeHtml(cleanUrl(c.kuma_url))}</span>
+                      </div>` : ''}
+                      <div class="details-hb-wrapper">
+                        <span class="kv-key" style="margin-bottom: 6px; display: block;">Heartbeats (Last 30 probes):</span>
+                        <div class="heartbeat-bar">
+                          ${heartbeatsHtml}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </td>
           </tr>
         `;
+
+        return summaryRow + detailsRow;
       }).join('');
     }
 

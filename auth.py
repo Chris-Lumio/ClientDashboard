@@ -109,16 +109,37 @@ class UserManager:
         except Exception:
             pass
 
-    def verify_login(self, username_or_email: str, password: str) -> Optional[Dict[str, Any]]:
-        """Validate credentials; returns user dict or None."""
-        if not username_or_email or not password:
+    def get_user(self, username_or_email: str) -> Optional[Dict[str, Any]]:
+        """Look up user by username or email (case-insensitive)."""
+        if not username_or_email:
             return None
         with self._lock:
             users = self._load_raw()
-            # Case-insensitive username / email lookup
+            lookup = username_or_email.strip().lower()
+            for key, user in users.items():
+                if key.lower() == lookup or user.get("username", "").lower() == lookup:
+                    res = dict(user)
+                    res["key"] = key
+                    return res
+            return None
+
+    def must_set_password(self, username_or_email: str) -> bool:
+        """Check if user exists and requires setting an initial password."""
+        user = self.get_user(username_or_email)
+        if not user:
+            return False
+        return bool(user.get("must_set_password") or not user.get("password_hash"))
+
+    def verify_login(self, username_or_email: str, password: str) -> Optional[Dict[str, Any]]:
+        """Validate credentials; returns user dict or None."""
+        if not username_or_email:
+            return None
+        with self._lock:
+            users = self._load_raw()
             target_key = None
-            for key in users:
-                if key.lower() == username_or_email.strip().lower():
+            lookup = username_or_email.strip().lower()
+            for key, u in users.items():
+                if key.lower() == lookup or u.get("username", "").lower() == lookup:
                     target_key = key
                     break
 
@@ -128,13 +149,61 @@ class UserManager:
                 return None
 
             user = users[target_key]
+
+            # If user must set initial password, return special status
+            if user.get("must_set_password") or not user.get("password_hash"):
+                return {
+                    "username": user.get("username", target_key),
+                    "display_name": user.get("display_name", target_key),
+                    "must_set_password": True
+                }
+
+            if not password:
+                return None
+
             stored_hash = user.get("password_hash", "")
             if verify_password(password, stored_hash):
                 return {
                     "username": user.get("username", target_key),
-                    "display_name": user.get("display_name", target_key)
+                    "display_name": user.get("display_name", target_key),
+                    "must_set_password": False
                 }
             return None
+
+    def set_initial_password(self, username_or_email: str, new_password: str) -> Tuple[bool, str, Optional[Dict[str, Any]]]:
+        """Set password for a user who is in must_set_password state."""
+        if not username_or_email:
+            return False, "Username or email is required.", None
+        if not new_password or len(new_password) < 6:
+            return False, "Password must be at least 6 characters long.", None
+
+        with self._lock:
+            users = self._load_raw()
+            lookup = username_or_email.strip().lower()
+            target_key = None
+            for key, u in users.items():
+                if key.lower() == lookup or u.get("username", "").lower() == lookup:
+                    target_key = key
+                    break
+
+            if not target_key:
+                return False, "User account not found.", None
+
+            user = users[target_key]
+            # Security check: only allow if user must set password
+            if not user.get("must_set_password") and user.get("password_hash"):
+                return False, "This account already has an active password.", None
+
+            user["password_hash"] = hash_password(new_password)
+            user["must_set_password"] = False
+            user["password_set_at"] = time.time()
+            user["updated_at"] = time.time()
+            self._save_raw(users)
+
+            return True, "Password successfully set.", {
+                "username": user.get("username", target_key),
+                "display_name": user.get("display_name", target_key)
+            }
 
     def set_password(self, username: str, new_password: str) -> bool:
         """Update or create user password."""
@@ -155,7 +224,51 @@ class UserManager:
                 }
 
             users[target_key]["password_hash"] = hash_password(new_password)
+            users[target_key]["must_set_password"] = False
             users[target_key]["updated_at"] = time.time()
+            self._save_raw(users)
+            return True
+
+    def add_user(self, username: str, display_name: Optional[str] = None, password: Optional[str] = None, must_set_password: bool = False) -> bool:
+        """Create a new user, optionally requiring password setup on first login."""
+        with self._lock:
+            users = self._load_raw()
+            key = username.strip().lower()
+            if not display_name:
+                display_name = key.split("@")[0].capitalize()
+
+            user_entry = {
+                "username": key,
+                "display_name": display_name,
+                "created_at": time.time(),
+                "must_set_password": must_set_password
+            }
+            if password:
+                user_entry["password_hash"] = hash_password(password)
+                user_entry["must_set_password"] = False
+            else:
+                user_entry["password_hash"] = None
+                user_entry["must_set_password"] = True
+
+            users[key] = user_entry
+            self._save_raw(users)
+            return True
+
+    def delete_user(self, username_or_email: str) -> bool:
+        """Delete a user account."""
+        if not username_or_email:
+            return False
+        with self._lock:
+            users = self._load_raw()
+            lookup = username_or_email.strip().lower()
+            target_key = None
+            for key, u in users.items():
+                if key.lower() == lookup or u.get("username", "").lower() == lookup:
+                    target_key = key
+                    break
+            if not target_key:
+                return False
+            del users[target_key]
             self._save_raw(users)
             return True
 
@@ -166,10 +279,12 @@ class UserManager:
                 u: {
                     "username": d.get("username"),
                     "display_name": d.get("display_name"),
+                    "must_set_password": bool(d.get("must_set_password") or not d.get("password_hash")),
                     "created_at": d.get("created_at")
                 }
                 for u, d in users.items()
             }
+
 
 
 class SessionManager:

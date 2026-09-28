@@ -508,7 +508,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             return None
         return session
 
-    def render_login_page(self, error_message: str = None, next_url: str = "/", status_code: int = 200):
+    def render_login_page(self, mode: str = "login", target_username: str = "", display_name: str = "", error_message: str = None, next_url: str = "/", status_code: int = 200):
         login_path = os.path.join(TEMPLATES_DIR, "login.html")
         if not os.path.exists(login_path):
             self.send_response(500)
@@ -521,12 +521,15 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
         if error_message:
             escaped_msg = html.escape(error_message)
-            banner = f'<div class="alert"><span class="alert-icon">⚠️</span><span>{escaped_msg}</span></div>'
+            banner = f'<div class="alert"><span class="alert-icon"><svg class="icon" viewBox="0 0 24 24"><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span><span>{escaped_msg}</span></div>'
             template = template.replace("<!-- ERROR_BANNER_PLACEHOLDER -->", banner)
         else:
             template = template.replace("<!-- ERROR_BANNER_PLACEHOLDER -->", "")
 
         template = template.replace("{{NEXT_URL}}", html.escape(sanitize_next_url(next_url)))
+        template = template.replace("{{INITIAL_MODE}}", "set_password" if mode == "set_password" else "login")
+        template = template.replace("{{TARGET_USERNAME}}", html.escape(target_username))
+        template = template.replace("{{DISPLAY_NAME}}", html.escape(display_name))
 
         content = template.encode("utf-8")
         self.send_response(status_code)
@@ -589,6 +592,28 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self.wfile.write(data)
             return
 
+        # 1.5 Check User Setup State (for dynamic frontend login enhancement)
+        if path == "/api/auth/check":
+            target_username = query.get("username", [""])[0].strip()
+            if target_username and user_mgr.must_set_password(target_username):
+                u = user_mgr.get_user(target_username)
+                resp_data = {
+                    "must_set_password": True,
+                    "username": u.get("username", target_username) if u else target_username,
+                    "display_name": u.get("display_name", target_username.split("@")[0].capitalize()) if u else "User"
+                }
+            else:
+                resp_data = {"must_set_password": False}
+
+            content = json.dumps(resp_data).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "application/json; charset=utf-8")
+            self.send_header("Content-Length", str(len(content)))
+            self.send_security_headers(is_cacheable=False)
+            self.end_headers()
+            self.wfile.write(content)
+            return
+
         # 2. Login Page
         if path == "/login":
             user = self.get_authenticated_user()
@@ -601,7 +626,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
             error = query.get("error", [None])[0]
             next_url = query.get("next", ["/"])[0]
-            self.render_login_page(error_message=error, next_url=next_url, status_code=200)
+            self.render_login_page(mode="login", error_message=error, next_url=next_url, status_code=200)
             return
 
         # 3. Logout
@@ -711,8 +736,31 @@ class DashboardHandler(BaseHTTPRequestHandler):
             remember_me = params.get("remember", [""])[0] == "1"
             next_url = sanitize_next_url(params.get("next", ["/"])[0])
 
+            # Check if this user needs to set their initial password
+            if username and user_mgr.must_set_password(username):
+                u = user_mgr.get_user(username)
+                disp = u.get("display_name", username.split("@")[0].capitalize()) if u else username
+                self.render_login_page(
+                    mode="set_password",
+                    target_username=u.get("username", username) if u else username,
+                    display_name=disp,
+                    next_url=next_url,
+                    status_code=200
+                )
+                return
+
             user = user_mgr.verify_login(username, password)
-            if not user:
+            if not user or user.get("must_set_password"):
+                if user and user.get("must_set_password"):
+                    self.render_login_page(
+                        mode="set_password",
+                        target_username=user["username"],
+                        display_name=user.get("display_name", user["username"]),
+                        next_url=next_url,
+                        status_code=200
+                    )
+                    return
+
                 rate_limiter.record_failure(client_ip)
                 # Anti-timing / brute-force delay
                 time.sleep(1.0)
@@ -728,6 +776,106 @@ class DashboardHandler(BaseHTTPRequestHandler):
             user_agent = self.headers.get("User-Agent", "")
             session_id = session_mgr.create_session(
                 username=user["username"],
+                client_ip=client_ip,
+                user_agent=user_agent,
+                remember_me=remember_me
+            )
+
+            is_https = is_secure_connection(self)
+            max_age_days = 30 if remember_me else 1
+            cookie_header = create_cookie_header(session_id, is_https=is_https, max_age_days=max_age_days)
+
+            self.send_response(302)
+            self.send_header("Location", next_url)
+            self.send_header("Set-Cookie", cookie_header)
+            self.send_security_headers(is_cacheable=False)
+            self.end_headers()
+            return
+
+        # 1.5 Initial Password Setup POST
+        if path == "/set-password":
+            client_ip = get_client_ip(self)
+            allowed, retry_after = rate_limiter.check(client_ip)
+            if not allowed:
+                time.sleep(1.0)
+                self.render_login_page(
+                    mode="set_password",
+                    error_message=f"Too many attempts. Please wait {retry_after} seconds before trying again.",
+                    next_url="/",
+                    status_code=429
+                )
+                return
+
+            try:
+                content_len = int(self.headers.get("Content-Length", 0))
+            except (ValueError, TypeError):
+                content_len = 0
+
+            if content_len <= 0 or content_len > 16384:
+                self.send_response(400)
+                self.end_headers()
+                self.wfile.write(b"400 Bad Request")
+                return
+
+            body = self.rfile.read(content_len).decode("utf-8", errors="replace")
+            params = parse_qs(body)
+
+            username = params.get("username", [""])[0].strip()
+            new_password = params.get("new_password", [""])[0]
+            confirm_password = params.get("confirm_password", [""])[0]
+            remember_me = params.get("remember", [""])[0] == "1"
+            next_url = sanitize_next_url(params.get("next", ["/"])[0])
+
+            u = user_mgr.get_user(username)
+            disp_name = u.get("display_name", username.split("@")[0].capitalize()) if u else username
+
+            if not username or not user_mgr.must_set_password(username):
+                self.render_login_page(
+                    error_message="Invalid or expired password setup request. Please sign in.",
+                    next_url=next_url,
+                    status_code=400
+                )
+                return
+
+            if new_password != confirm_password:
+                self.render_login_page(
+                    mode="set_password",
+                    target_username=username,
+                    display_name=disp_name,
+                    error_message="Passwords do not match. Please re-enter and confirm.",
+                    next_url=next_url,
+                    status_code=400
+                )
+                return
+
+            if len(new_password) < 6:
+                self.render_login_page(
+                    mode="set_password",
+                    target_username=username,
+                    display_name=disp_name,
+                    error_message="Password must be at least 6 characters long.",
+                    next_url=next_url,
+                    status_code=400
+                )
+                return
+
+            ok, msg, updated_user = user_mgr.set_initial_password(username, new_password)
+            if not ok or not updated_user:
+                self.render_login_page(
+                    mode="set_password",
+                    target_username=username,
+                    display_name=disp_name,
+                    error_message=msg,
+                    next_url=next_url,
+                    status_code=400
+                )
+                return
+
+            # Success! Immediately authenticate and create session
+            rate_limiter.record_success(client_ip)
+            user_agent = self.headers.get("User-Agent", "")
+            session_id = session_mgr.create_session(
+                username=updated_user["username"],
                 client_ip=client_ip,
                 user_agent=user_agent,
                 remember_me=remember_me
