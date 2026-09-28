@@ -45,7 +45,7 @@ Before starting, ensure you have:
      *Example:* `John Doe - Beirut Central (LB-BE-0004)`
    * **Tags**: `backup`, `client`, `<site-code>`
    * **Period**: `1 day` (for daily backups) or `7 days` (for weekly backups).
-   * **Grace Time**: `4 hours` (provides a safety window before alerting).
+   * **Grace Time**: `8 hours` (provides a safety window before alerting; prevents morning false alarms).
 4. Click **Save**.
 5. Copy the generated **Check UUID** from the check details (you will need this in Phase 3):
    ```text
@@ -119,59 +119,64 @@ rest_command:
 
 ---
 
-#### 2. Edit `/config/scripts.yaml`
-Add the backup execution script:
+#### 2. Edit `/config/automations.yaml`
+Add the bulletproof backup monitor automation:
+* Listens to the native Home Assistant backup event (`event.backup_automatic_backup`)
+* Automatically retries up to 5 times (1 minute delay) on network/Tailscale glitches
+* Reports success or failure with exact `failed_reason`
+* Includes an 08:00 AM morning heartbeat sync
 
 ```yaml
-run_backup_and_report:
-  alias: "Run Backup and Report to Healthchecks"
-  description: "Creates a full backup, pings Healthchecks, and logs to Google Sheets"
-  sequence:
-    - action: hassio.backup_full
-      data:
-        name: "Backup {{ now().strftime('%Y-%m-%d %H:%M') }}"
-    - action: rest_command.report_backup_health
-      data:
-        suffix: ""
-        message: "Home Assistant Location: <Client Name> | Backup completed successfully at {{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
-    - action: google_sheets.append_sheet
-      data:
-        config_entry: <CLIENT_GOOGLE_SHEETS_CONFIG_ENTRY_ID>
-        add_created_column: true
-        data:
-          Location: "<Client Name>"
-          Date: "{{ now().strftime('%Y-%m-%d') }}"
-          Time: "{{ now().strftime('%H:%M:%S') }}"
-          Status: "completed"
-          Failed Reason: ""
-  mode: single
-```
-*(Replace `<Client Name>` and `<CLIENT_GOOGLE_SHEETS_CONFIG_ENTRY_ID>` with client details).*
-
----
-
-#### 3. Edit `/config/automations.yaml`
-Add the daily automatic backup schedule:
-
-```yaml
-- id: 'backup_daily_scheduled_healthchecks'
-  alias: "Daily Backup - Healthchecks and Google Sheets"
-  description: "Runs automatic daily backup at 03:00 AM, pings Healthchecks, and logs to Google Sheets"
+- id: 'backup_monitor_healthchecks_robust'
+  alias: "Backup Monitor - Healthchecks with Retries"
+  description: "Monitors automatic backups, retries on network blips, and reports reasons"
   triggers:
+    - trigger: state
+      entity_id: event.backup_automatic_backup
     - trigger: time
-      at: "03:00:00"
+      at: "08:00:00"  # Morning sync heartbeat
+  conditions:
+    - condition: template
+      value_template: >-
+        {{ state_attr('event.backup_automatic_backup', 'event_type') in ['completed', 'failed'] 
+           or trigger.platform == 'time' }}
   actions:
-    - action: script.run_backup_and_report
+    - variables:
+        status: "{{ state_attr('event.backup_automatic_backup', 'event_type') | default('completed') }}"
+        reason: "{{ state_attr('event.backup_automatic_backup', 'failed_reason') | default('', true) }}"
+    - repeat:
+        count: 5
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ status == 'completed' }}"
+                then:
+                  - action: rest_command.report_backup_health
+                    data:
+                      suffix: ""
+                      message: "Location: <Client Name> | Backup completed successfully at {{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+              - conditions:
+                  - condition: template
+                    value_template: "{{ status == 'failed' }}"
+                then:
+                  - action: rest_command.report_backup_health
+                    data:
+                      suffix: "/fail"
+                      message: "Location: <Client Name> | Backup failed: {{ reason }}"
+          - delay:
+              seconds: 60
   mode: single
 ```
+*(Replace `<Client Name>` with the client's name).*
 
 ---
 
-#### 4. Reload Configuration
+#### 3. Reload Configuration
 In Home Assistant:
 1. Go to **Developer Tools** → **YAML**.
 2. Click **Check Configuration** (must show *Configuration valid!*).
-3. Click **Restart** (or click *Scripts*, *Automations*, and *REST Commands* to reload).
+3. Click **Restart** (or click *Automations* and *REST Commands* to reload).
 
 ---
 

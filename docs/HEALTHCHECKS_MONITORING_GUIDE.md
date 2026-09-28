@@ -70,7 +70,7 @@ Follow these 5 steps for every new Home Assistant installation you want to monit
      *(e.g., `Mohammad Hatoum - Qebb Elias (LB-QE-0003)`)*
    * **Tags**: `backup`, `<client-code>`
    * **Period**: `1 day` (or expected backup frequency)
-   * **Grace Time**: `4 hours` (buffer window before declaring the client down)
+   * **Grace Time**: `8 hours` (buffer window before declaring the client down; prevents morning false alarms)
 4. Click **Save** and copy the generated **Check UUID**:
    ```text
    Example UUID: e2d758f3-d8db-4d91-8ebb-284456cf3d96
@@ -134,48 +134,55 @@ rest_command:
 *(Replace `<CLIENT-UUID>` with the UUID generated in Step 1).*
 
 > [!TIP]
-> Using the direct Tailscale IP `http://100.85.142.34:8000` avoids local DNS lookup delays inside Docker containers while remaining fully encrypted across WireGuard.
+> Using the direct Tailscale IP `http://100.85.142.34:8000` avoids local DNS lookup delays inside Docker containers while remaining fully encrypted across WireGuard. Never use HTTPS domain names for the ping endpoint inside HA to avoid DNS and TLS handshake drops.
 
 ---
 
-### Step 4: Add Backup Script & Automation
+### Step 4: Add Bulletproof Backup Automation (With Retries)
 
-#### In `/config/scripts.yaml`:
-```yaml
-run_backup_and_report:
-  alias: "Run Backup and Report to Healthchecks"
-  description: "Creates a full backup, pings Healthchecks, and logs to Google Sheets"
-  sequence:
-    - action: hassio.backup_full
-      data:
-        name: "Backup {{ now().strftime('%Y-%m-%d %H:%M') }}"
-    - action: rest_command.report_backup_health
-      data:
-        suffix: ""
-        message: "Location: <Client Name> | Backup completed successfully at {{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
-    - action: google_sheets.append_sheet
-      data:
-        config_entry: <YOUR_GOOGLE_SHEETS_CONFIG_ENTRY>
-        add_created_column: true
-        data:
-          Location: "<Client Name>"
-          Date: "{{ now().strftime('%Y-%m-%d') }}"
-          Time: "{{ now().strftime('%H:%M:%S') }}"
-          Status: "completed"
-          Failed Reason: ""
-  mode: single
-```
+This automation listens natively to Home Assistant's automatic backup event (`event.backup_automatic_backup`), reports successes and failures with exact error reasons, and automatically retries up to 5 times if the network is momentarily down at 3:00 AM:
 
 #### In `/config/automations.yaml`:
 ```yaml
-- id: 'backup_daily_scheduled_healthchecks'
-  alias: "Daily Backup - Healthchecks and Google Sheets"
-  description: "Executes automatic daily backup at 03:00 AM and reports to Healthchecks"
+- id: 'backup_monitor_healthchecks_robust'
+  alias: "Backup Monitor - Healthchecks with Retries"
+  description: "Monitors automatic and manual backups, retries on network blips, and reports reasons"
   triggers:
+    - trigger: state
+      entity_id: event.backup_automatic_backup
     - trigger: time
-      at: "03:00:00"
+      at: "08:00:00"  # Morning sync heartbeat
+  conditions:
+    - condition: template
+      value_template: >-
+        {{ state_attr('event.backup_automatic_backup', 'event_type') in ['completed', 'failed'] 
+           or trigger.platform == 'time' }}
   actions:
-    - action: script.run_backup_and_report
+    - variables:
+        status: "{{ state_attr('event.backup_automatic_backup', 'event_type') | default('completed') }}"
+        reason: "{{ state_attr('event.backup_automatic_backup', 'failed_reason') | default('', true) }}"
+    - repeat:
+        count: 5
+        sequence:
+          - choose:
+              - conditions:
+                  - condition: template
+                    value_template: "{{ status == 'completed' }}"
+                then:
+                  - action: rest_command.report_backup_health
+                    data:
+                      suffix: ""
+                      message: "Location: <Client Name> | Backup completed successfully at {{ now().strftime('%Y-%m-%d %H:%M:%S') }}"
+              - conditions:
+                  - condition: template
+                    value_template: "{{ status == 'failed' }}"
+                then:
+                  - action: rest_command.report_backup_health
+                    data:
+                      suffix: "/fail"
+                      message: "Location: <Client Name> | Backup failed: {{ reason }}"
+          - delay:
+              seconds: 60
   mode: single
 ```
 
